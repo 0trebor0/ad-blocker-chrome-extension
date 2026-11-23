@@ -1,13 +1,49 @@
 {
-    "name": "Ad Blocker", 
-    "description": "Blocks ads on any website",
-    "manifest_version": 2,
-    "version": "1.01", 
-    "background": {
-        "scripts": ["blockedsites.js", "script.js"]
-    },
+    "name": "Ad Blocker",
+    "description": "Blocks requests to listed ad and tracking domains and hides marked ads on web pages.",
+    "manifest_version": 3,
+    "version": "1.2",
+    "minimum_chrome_version": "111",
     "icons": {
-        "128"   : "logo.PNG"
+        "128": "logo.PNG"
     },
-    "permissions": ["webRequest", "webRequestBlocking", "http://*/", "https://*/"]
+    "permissions": [
+        "declarativeNetRequest", "storage"
+    ],
+    "background": {
+        "service_worker": "badge.js"
+    },
+    "action": {
+        "default_title": "Ad Blocker (badge shows blocked requests)",
+        "default_popup": "filter-popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["http://*/*", "https://*/*"],
+            "js": ["community-filters.js", "page-ad-blocker.js"],
+            "run_at": "document_start"
+        },
+        {
+            "matches": ["http://*/*", "https://*/*"],
+            "js": ["popup-settings.js"],
+            "run_at": "document_start",
+            "all_frames": true
+        },
+        {
+            "matches": ["http://*/*", "https://*/*"],
+            "js": ["popup-blocker.js"],
+            "run_at": "document_start",
+            "all_frames": true,
+            "world": "MAIN"
+        }
+    ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "blocked_domains",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    }
 }
