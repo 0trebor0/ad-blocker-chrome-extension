@@ -10,7 +10,7 @@ const rules = JSON.parse(readFileSync(ruleset.path, 'utf8'))
 test('manifest enables the packaged blocking ruleset', () => {
     assert.equal(manifest.manifest_version, 3)
     assert.match(manifest.version, /^(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){0,3}$/)
-    assert.deepEqual(manifest.permissions, ['declarativeNetRequest', 'storage'])
+    assert.deepEqual(manifest.permissions, ['declarativeNetRequest', 'storage', 'activeTab'])
     assert.equal(ruleset.enabled, true)
     assert.equal(rules.length, 1)
     assert.equal(rules[0].id, 1)
@@ -178,10 +178,10 @@ test('picker saves the selected element under its hostname and handles write fai
     assert.deepEqual(alerts, ['The ad filter could not be saved.'])
 })
 
-test('popup opens a GitHub proposal for the selected filter without submitting it', async () => {
+test('popup previews a filter and opens GitHub only after confirmation', async () => {
     const key = 'ad-filter:example.com:#ad'
     const filter = {hostname: 'example.com', selector: '#ad'}
-    const controls = Object.fromEntries(['filters', 'pick', 'share', 'remove', 'status', 'page-ad-count', 'block-click-popups'].map(id => [
+    const controls = Object.fromEntries(['filters', 'pick', 'share', 'remove', 'status', 'blocked-request-count', 'page-ad-count', 'block-click-popups', 'site-name', 'share-dialog', 'share-preview', 'confirm-share'].map(id => [
         '#' + id, {addEventListener(event, listener) { this[event] = listener }}
     ]))
     const select = controls['#filters']
@@ -191,6 +191,8 @@ test('popup opens a GitHub proposal for the selected filter without submitting i
         add() { this.length++ }
     })
     let proposal
+    const dialog = controls['#share-dialog']
+    dialog.showModal = () => { dialog.open = true }
     const popupSettingKey = 'ad-popup-setting:example.com'
     let storedPopupSetting
     const popup = readFileSync(manifest.action.default_popup, 'utf8')
@@ -204,6 +206,7 @@ test('popup opens a GitHub proposal for the selected filter without submitting i
                 get: async () => ({[key]: filter}),
                 set: async value => { storedPopupSetting = value[popupSettingKey] }
             }},
+            action: {async getBadgeText({tabId}) { assert.equal(tabId, 42); return '14' }},
             tabs: {
                 async create({url}) { proposal = new URL(url) },
                 async query() { return [{id: 42}] },
@@ -216,7 +219,10 @@ test('popup opens a GitHub proposal for the selected filter without submitting i
         }
     })
     await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controls['#blocked-request-count'].textContent, '14')
     assert.equal(controls['#page-ad-count'].textContent, 0)
+    assert.equal(controls['#site-name'].textContent, 'example.com')
+    assert.equal(controls['#pick'].disabled, false)
     const popupToggle = controls['#block-click-popups']
     assert.equal(popupToggle.disabled, false)
     assert.equal(popupToggle.checked, true)
@@ -224,7 +230,18 @@ test('popup opens a GitHub proposal for the selected filter without submitting i
     await popupToggle.change()
     assert.equal(storedPopupSetting, false)
     assert.equal(controls['#share'].disabled, false)
+    const handleClose = dialog.close
+    dialog.close = () => { dialog.open = false; handleClose() }
     await controls['#share'].click()
+    assert.equal(dialog.open, true)
+    assert.deepEqual(JSON.parse(controls['#share-preview'].textContent), filter)
+    assert.equal(proposal, undefined)
+    dialog.close()
+    await controls['#confirm-share'].click()
+    assert.equal(proposal, undefined)
+    await controls['#share'].click()
+    await controls['#confirm-share'].click()
+    assert.equal(dialog.open, false)
     assert.equal(proposal.origin, 'https://github.com')
     assert.equal(proposal.pathname, '/0trebor0/ad-blocker-chrome-extension/issues/new')
     assert.equal(proposal.searchParams.get('title'), 'Community ad filter for example.com')
@@ -319,4 +336,67 @@ test('pop-ups are blocked by default and a site exception permits click-triggere
     navigator.userActivation.isActive = true
     storageChanged({[key]: {}}, 'local')
     assert.equal(window.open('/ad', '_blank'), null)
+})
+
+test('popup counts matching requests when badge text is unavailable', async () => {
+    const source = readFileSync('filter-popup.js', 'utf8')
+    for (const {badgeText, matches, expected} of [
+        {badgeText: '', matches: 0, expected: 0},
+        {badgeText: '?', matches: 5, expected: 5},
+        {badgeText: new Error('Badge unavailable'), matches: 7, expected: 7},
+        {badgeText: '?', matches: new Error('Rules unavailable'), expected: '—'}
+    ]) {
+        const controls = new Map()
+        const document = {
+            querySelector(selector) {
+                const control = {
+                    textContent: '—',
+                    addEventListener() {},
+                    replaceChildren() {},
+                    add() {},
+                    length: 0
+                }
+                controls.set(selector, control)
+                return control
+            }
+        }
+        let resolvePage
+        const pageResponse = new Promise(resolve => { resolvePage = resolve })
+        const errors = []
+        const chrome = {
+            action: {
+                async getBadgeText() {
+                    if (badgeText instanceof Error) throw badgeText
+                    return badgeText
+                }
+            },
+            declarativeNetRequest: {
+                async getMatchedRules({tabId}) {
+                    assert.equal(tabId, 42)
+                    if (matches instanceof Error) throw matches
+                    return {rulesMatchedInfo: Array(matches).fill({rule: {ruleId: 1}})}
+                }
+            },
+            tabs: {
+                async query() { return [{id: 42}] },
+                async sendMessage() {
+                    return pageResponse
+                }
+            },
+            storage: {local: {async get() { return {} }}}
+        }
+        runInNewContext(source, {
+            document, chrome, Option: class {},
+            console: {error(message) { errors.push(message) }}
+        })
+        await new Promise(resolve => setImmediate(resolve))
+        assert.equal(controls.get('#blocked-request-count').textContent, expected)
+        assert.equal(controls.get('#page-ad-count').textContent, '—')
+        assert.deepEqual(errors, matches instanceof Error ? ['Could not read the blocked request count'] : [])
+
+        resolvePage({count: 3, popupSettingKey: 'ad-popup-setting:example.com'})
+        await new Promise(resolve => setImmediate(resolve))
+        assert.equal(controls.get('#page-ad-count').textContent, 3)
+        assert.equal(controls.get('#block-click-popups').disabled, false)
+    }
 })

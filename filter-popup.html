@@ -2,25 +2,172 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Ad filters</title>
+    <title>Ad Blocker</title>
     <script src="filter-popup.js" defer></script>
     <style>
-        body { width: 20rem; padding: 0.75rem; font: 14px system-ui; }
-        select { width: 100%; margin: 0.5rem 0; }
-        button { margin-right: 0.25rem; }
-        output { display: block; margin-top: 0.5rem; overflow-wrap: anywhere; }
+        :root {
+            color-scheme: dark;
+            --background: #101715;
+            --surface: #192320;
+            --border: #354640;
+            --text: #eef7f3;
+            --muted: #afc4bb;
+            --accent: #a3efbd;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            width: 360px;
+            margin: 0;
+            padding: 18px;
+            background: var(--background);
+            color: var(--text);
+            font: 13px/1.45 system-ui, sans-serif;
+        }
+
+        header { display: flex; align-items: center; gap: 10px; }
+        header img { width: 32px; height: 32px; border-radius: 8px; }
+        header div { min-width: 0; }
+        h1, h2, p { margin: 0; }
+        h1 { font-size: 17px; line-height: 1.2; }
+        h2, .field-label, .toggle-title { font-size: 13px; font-weight: 650; }
+        .muted { color: var(--muted); font-size: 12px; }
+        #site-name { display: block; overflow-wrap: anywhere; }
+
+        main { display: grid; gap: 12px; margin-top: 16px; }
+        .card {
+            padding: 13px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .stat-card {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            gap: 13px;
+            background: #1c3027;
+        }
+
+        #blocked-request-count {
+            color: var(--accent);
+            font-size: 29px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .toggle-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .toggle-row span { display: block; }
+        .toggle-row input {
+            flex: none;
+            width: 18px;
+            height: 18px;
+            margin: 0 0 0 auto;
+            accent-color: var(--accent);
+        }
+
+        button, select {
+            min-height: 35px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;
+        }
+
+        button { padding: 6px 12px; cursor: pointer; font-weight: 650; }
+        button:hover:not(:disabled) { border-color: var(--accent); }
+        button:disabled, select:disabled, input:disabled { opacity: .6; cursor: default; }
+        :is(button, select, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+        .primary { background: var(--accent); border-color: var(--accent); color: #112719; }
+        .primary:hover:not(:disabled) { background: #c1f7d2; }
+        #pick { width: 100%; }
+        .picker-hint { margin-top: 5px; text-align: center; }
+        select { width: 100%; margin: 6px 0 9px; padding: 0 8px; text-overflow: ellipsis; }
+        .actions { display: flex; flex-wrap: wrap; gap: 7px; }
+        #status { display: block; margin-top: 8px; overflow-wrap: anywhere; }
+        #status:empty { display: none; }
+
+        dialog {
+            width: calc(100% - 36px);
+            max-width: 320px;
+            padding: 15px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+        }
+
+        dialog::backdrop { background: rgb(0 0 0 / .65); }
+        dialog p { margin-top: 6px; }
+        pre {
+            max-height: 100px;
+            overflow: auto;
+            padding: 8px;
+            background: var(--background);
+            border-radius: 6px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
     </style>
 </head>
 <body>
-    <p>Page elements matched by ad filters: <output id="page-ad-count" style="display: inline" aria-live="polite">Loading…</output></p>
-    <p>The toolbar badge shows blocked network requests for this tab.</p>
-    <p><label><input id="block-click-popups" type="checkbox" disabled> Block scripted pop-ups after clicks on this site</label></p>
-    <button id="pick" type="button">Pick an ad</button>
-    <p>Click an element to hide it. Press Esc to cancel.</p>
-    <label for="filters">Saved filters</label>
-    <select id="filters"></select>
-    <button id="share" type="button" disabled>Share to community</button>
-    <button id="remove" type="button" disabled>Remove</button>
+    <header>
+        <img src="logo.PNG" alt="">
+        <div>
+            <h1>Ad Blocker</h1>
+            <span id="site-name" class="muted">Checking this tab…</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="card stat-card" aria-labelledby="request-count-title">
+            <output id="blocked-request-count" aria-labelledby="request-count-title" aria-live="polite">—</output>
+            <div>
+                <h2 id="request-count-title">Blocked requests</h2>
+                <p class="muted"><output id="page-ad-count" aria-label="Page ad matches">—</output> page ad matches</p>
+            </div>
+        </section>
+
+        <div class="card">
+            <label class="toggle-row">
+                <span>
+                    <span class="toggle-title">Block scripted pop-ups</span>
+                    <span class="muted">Includes pop-ups triggered by clicks on this site.</span>
+                </span>
+                <input id="block-click-popups" type="checkbox" disabled>
+            </label>
+        </div>
+
+        <div>
+            <button id="pick" class="primary" type="button" disabled>Pick an ad</button>
+            <p class="muted picker-hint">Click an element to hide it. Press Esc to cancel.</p>
+        </div>
+
+        <section class="card" aria-labelledby="filters-label">
+            <label id="filters-label" class="field-label" for="filters">Saved filters</label>
+            <select id="filters" disabled><option value="">Loading filters…</option></select>
+            <div class="actions">
+                <button id="share" type="button" disabled>Share to community</button>
+                <button id="remove" type="button" disabled>Remove</button>
+            </div>
+        </section>
+    </main>
+
     <output id="status" aria-live="polite"></output>
+
+    <dialog id="share-dialog" aria-labelledby="share-title">
+        <h2 id="share-title">Review your filter</h2>
+        <p class="muted">Continuing sends the site and selector below to GitHub to prefill an issue draft.</p>
+        <pre id="share-preview" tabindex="0"></pre>
+        <form method="dialog" class="actions">
+            <button autofocus>Cancel</button>
+            <button id="confirm-share" class="primary" type="button">Continue to GitHub</button>
+        </form>
+    </dialog>
 </body>
 </html>

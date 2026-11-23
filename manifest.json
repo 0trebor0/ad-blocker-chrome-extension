@@ -8,7 +8,7 @@
         "128": "logo.PNG"
     },
     "permissions": [
-        "declarativeNetRequest", "storage"
+        "declarativeNetRequest", "storage", "activeTab"
     ],
     "background": {
         "service_worker": "badge.js"

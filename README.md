@@ -12,17 +12,17 @@ If a site stops working, you can temporarily disable the extension from `chrome:
 
 ## Block scripted pop-ups
 
-On HTTP and HTTPS pages and frames, the extension blocks scripted attempts to open new tabs or windows by default, including attempts triggered by a click. Turn off **Block scripted pop-ups after clicks on this site** in the extension popup if you need a scripted sign-in or payment window. Existing site exceptions are preserved. Direct links that open a new tab still work. Pick an ad to hide an overlay inside the page.
+On HTTP and HTTPS pages and frames, the extension blocks scripted attempts to open new tabs or windows by default, including attempts triggered by a click. Turn off **Block scripted pop-ups** in the extension popup if you need a scripted sign-in or payment window. Existing site exceptions are preserved. Direct links that open a new tab still work. Pick an ad to hide an overlay inside the page.
 
 ## See blocking counts
 
-Pin the extension to see the number of blocked network requests for the active tab on its toolbar badge. Open the popup to see how many page elements currently match an ad filter. Each matching element is counted once, even when several filters match it. An ad can involve multiple requests and elements. Scripted pop-ups blocked before a request starts do not contribute to either count.
+When opened, the popup reads the blocked request count for the active tab from the toolbar badge. If badge text is unavailable, it checks the blocking rules matched for that tab. The popup also shows how many page elements currently match an ad filter. Each matching element is counted once, even when several filters match it. An ad can involve multiple requests and elements. Scripted pop-ups blocked before a request starts do not contribute to either count.
 
 ## Pick and share an ad filter
 
 1. On the page with the ad, open the extension and click **Pick an ad**.
 2. Hover to see the target outline, then click the element to hide it. Press Esc to cancel. The filter applies to the same hostname on this Chrome profile and survives reloads. Use **Remove** in the popup if it hides the wrong element.
-3. To propose a filter for the community list, select it in the popup and click **Share to community**. GitHub opens a draft with the hostname and selector. Check both for personal information before opening the draft and again before submitting it.
+3. To propose a filter for the community list, select it in the popup and click **Share to community**. Review the hostname and selector in the preview. **Continue to GitHub** sends those values to GitHub and opens a prefilled issue draft for you to submit.
 
 Maintainers can test proposals and add approved entries to `community-filters.js`. The list ships with the extension, so users receive approved filters when they update. Layout changes can make filters based on element position stop matching or hide a different element.
 

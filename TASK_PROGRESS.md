@@ -78,3 +78,28 @@
 - Updated page-ad-blocker.js to include the site preference key when counting fails. Updated rules.test.js, CHANGELOG.md, and TASK_PROGRESS.md. No files added or removed.
 - The new regression assertion initially failed because the preference key was missing. After the fix, Node v26.13.1 reported 8 passed and 0 failed. All JavaScript passed syntax checks. A package inspection confirmed ten runtime files and a 100 by 100 PNG icon. Whitespace checks passed.
 - Still pending. The store requires a 128 by 128 listing icon. The package was not uploaded, and live Chrome testing was not performed.
+
+## Popup redesign and project review
+
+- Objective and status. Completed the popup redesign and repository review. Updated filter-popup.html, filter-popup.js, rules.test.js, README.md, CHANGELOG.md, and TASK_PROGRESS.md. No files were added or deleted.
+- Inspected the manifest, popup files and tests, background worker, network rules, page and pop-up filtering scripts, community filter list, docs, icon dimensions, and Git state. Main matches cached origin/main. GitHub DNS failure prevented checking open pull requests.
+- Review findings. Fixed sharing so the hostname and selector are previewed and confirmed before GitHub receives them. The page-world pop-up preference still uses a page-visible event and should be treated as best effort. The listing icon is 100 by 100 and the legacy blocklist has no documented upstream source.
+- Tests. Updated the popup test for the active hostname, page controls, confirmation, cancellation, and exact shared fields. Node v26.13.1 reported 8 passed, 0 failed. All project JavaScript passed node --check. Manifest and rule JSON parsed. Popup control IDs, packaged assets, and whitespace checks passed.
+- Limitations. Live Chrome interaction and visual layout were not verified. Store assets and privacy documentation are still pending.
+
+## Show the toolbar count in the popup
+
+- Completed. The popup reads the active tab badge as its primary blocked-request count and keeps the page element count separately labeled.
+- Inspected manifest.json, badge.js, filter-popup.html, filter-popup.js, rules.test.js, README.md, CHANGELOG.md, TASK_PROGRESS.md, local branches, and Chromium badge permission tests. GitHub DNS failure prevented checking pull requests.
+- Updated manifest.json, filter-popup.html, filter-popup.js, rules.test.js, README.md, CHANGELOG.md, and TASK_PROGRESS.md. Added activeTab to read badge text on user invocation. No files were added or removed.
+- Updated the popup test for 14 blocked requests and 0 page matches. Added coverage for empty badge text, placeholder, and API errors. Node v26.13.1 reported 9 passed, 0 failed. Syntax, JSON, and whitespace checks passed.
+- A PowerShell smart quote caused a documentation command to fail before writing files. Removed the smart quote and reran verification.
+- The popup reads a snapshot when opened. Live Chrome behavior was not verified.
+
+## Debug the blocked request count
+
+- Completed. Request count initialization now runs independently of the content script response and falls back to matched blocking requests for the active tab when badge text cannot be read.
+- Inspected manifest.json, badge.js, rules.json, filter-popup.js, rules.test.js, README.md, CHANGELOG.md, TASK_PROGRESS.md, and local branches. GitHub DNS failure prevented the remote pull request check.
+- Updated filter-popup.js, rules.test.js, README.md, CHANGELOG.md, and TASK_PROGRESS.md. No permissions changed and no files were added or removed.
+- Expanded the popup test for empty and unavailable badge text, fallback results and errors, and a delayed content script response. Node reported 9 passed and 0 failed. JavaScript syntax, JSON parsing, and whitespace checks passed.
+- Limitation. No Chrome, Chromium, or Edge executable was found on PATH. The reported failure was not reproduced in a live browser. If both count APIs are unavailable, the popup can still show a dash.
